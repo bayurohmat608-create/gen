@@ -92,6 +92,11 @@ jobs:
           include(":app")
           EOF
 
+          cat > /tmp/droide-deps/gradle.properties <<'EOF'
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
+          EOF
+
           cat > /tmp/droide-deps/build.gradle.kts <<'EOF'
           plugins {
               id("com.android.application") version "8.13.2" apply false
