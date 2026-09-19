@@ -29,8 +29,14 @@ jobs:
           export ANDROID_SDK_ROOT="$ANDROID_HOME"
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort | tail -1)"
           test -x "$SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          set +o pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          LICENSE_RC=${PIPESTATUS[1]}
           yes | "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+          INSTALL_RC=${PIPESTATUS[1]}
+          set -o pipefail
+          test "$LICENSE_RC" -eq 0
+          test "$INSTALL_RC" -eq 0
           test -f "$ANDROID_HOME/platforms/android-36/android.jar"
           test -x "$ANDROID_HOME/build-tools/36.0.0/aapt2"
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
