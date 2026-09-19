@@ -200,7 +200,7 @@ jobs:
               "kind":"droide-gradle-dependency-cache",
               "gradleVersion":"8.13",
               "metadataFormat":"metadata-2.107",
-              "buildConfigSha256":"1118980861cf13d987c65a0c60bffc78d84107f4ea81220b8390049b0653d523",
+              "buildConfigSha256":"3f143e72b8343aa974defa8cb25e9ca6a472d1742a732ff4adfacdda62c585d6",
               "seedSourceTreeSha256":"TRANSPORT_ONLY_NOT_SOURCE_CERTIFIED",
               "realBuildEvidenceSha256":"TRANSPORT_ONLY_NOT_SOURCE_CERTIFIED",
               "fileCount":len(entries),
