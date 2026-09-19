@@ -242,21 +242,62 @@ jobs:
           print("CP73C_CACHE_FILES="+str(len(entries)))
           PY
 
-      - name: Split dependency bundle for transport
+      - name: Split dependency bundle for bounded transport
         shell: bash
         run: |
           set -euo pipefail
-          split -b 64M -d -a 3 /tmp/droide-cp73c-dependency-cache.zip /tmp/droide-cp73c-dependency-cache.part-
+          split -b 50M -d -a 2 /tmp/droide-cp73c-dependency-cache.zip /tmp/droide-cp73c-dependency-cache.part-
+          test "$(find /tmp -maxdepth 1 -name 'droide-cp73c-dependency-cache.part-*' | wc -l)" -eq 6
           sha256sum /tmp/droide-cp73c-dependency-cache.part-* > /tmp/CP73C-PARTS-SHA256.txt
           cat /tmp/CP73C-PARTS-SHA256.txt
-          echo "CP73C_PART_COUNT=$(find /tmp -maxdepth 1 -name 'droide-cp73c-dependency-cache.part-*' | wc -l)" >> "$GITHUB_ENV"
 
-      - name: Upload dependency transport bundle
+      - name: Upload dependency part 00
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: droide-cp73c-dependency-transport
+          name: droide-cp73c-final-part-00
+          path: /tmp/droide-cp73c-dependency-cache.part-00
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload dependency part 01
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: droide-cp73c-final-part-01
+          path: /tmp/droide-cp73c-dependency-cache.part-01
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload dependency part 02
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: droide-cp73c-final-part-02
+          path: /tmp/droide-cp73c-dependency-cache.part-02
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload dependency part 03
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: droide-cp73c-final-part-03
+          path: /tmp/droide-cp73c-dependency-cache.part-03
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload dependency part 04
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: droide-cp73c-final-part-04
+          path: /tmp/droide-cp73c-dependency-cache.part-04
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload dependency part 05
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: droide-cp73c-final-part-05
+          path: /tmp/droide-cp73c-dependency-cache.part-05
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload dependency provenance
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: droide-cp73c-final-provenance
           path: |
-            /tmp/droide-cp73c-dependency-cache.part-*
             /tmp/CP73C-PROVENANCE.txt
             /tmp/CP73C-PARTS-SHA256.txt
           if-no-files-found: error
