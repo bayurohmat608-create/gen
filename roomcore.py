@@ -87,24 +87,28 @@ def demo_reply(agent,other,topic,n):
 
 def worker():
  try:
-  cfg=load_config(); transcript=[]
-  with RUNTIME.lock: existing=list(RUNTIME.messages); topic=RUNTIME.topic; mode=RUNTIME.mode; limit=RUNTIME.turn_limit; demo=RUNTIME.demo
-  for m in existing:
-   if m['role'] in {'agent','user'}:transcript.append(blindroom.Turn(len(transcript)+1,m['speaker'],m['text'],m['created_at']))
-  count=sum(1 for m in existing if m.get('role')=='agent')
-  while count<limit:
+  with RUNTIME.lock: topic=RUNTIME.topic; mode=RUNTIME.mode; limit=RUNTIME.turn_limit; demo=RUNTIME.demo
+  if demo:
+   try:cfg=load_config()
+   except Exception:
+    cfg=blindroom.RoomConfig('Blind Agent Room',limit,True,[
+     blindroom.Agent('Agent A','openai','demo-focus','focus','OPENAI_API_KEY'),
+     blindroom.Agent('Agent B','gemini','demo-mbul','mbul','GEMINI_API_KEY')])
+  else:cfg=load_config()
+  while True:
    with RUNTIME.lock:
     if RUNTIME.stop_requested:break
-    paused=RUNTIME.paused; idx=RUNTIME.next_agent_index
+    paused=RUNTIME.paused; idx=RUNTIME.next_agent_index; current=list(RUNTIME.messages)
+   count=sum(1 for m in current if m.get('role')=='agent')
+   if count>=limit:break
    if paused:time.sleep(.15);continue
+   transcript=[blindroom.Turn(i+1,m['speaker'],m['text'],m['created_at']) for i,m in enumerate(current) if m.get('role') in {'agent','user'}]
    speaker=cfg.agents[idx]; other=cfg.agents[(idx+1)%2]; RUNTIME.publish('typing',{'speaker':speaker.name,'active':True})
    try:
     if demo:time.sleep(.7); text=demo_reply(speaker,other,topic,count)
     else:text=blindroom.call_provider(speaker,blindroom.build_system(speaker),prompt(topic,transcript,speaker,other,mode)).strip()
    finally:RUNTIME.publish('typing',{'speaker':speaker.name,'active':False})
-   turn=blindroom.Turn(len(transcript)+1,speaker.name,text,datetime.now(timezone.utc).isoformat()); transcript.append(turn)
    RUNTIME.add('agent',speaker.name,text,{'provider':speaker.provider,'model':speaker.model,'persona':speaker.persona,'agent_index':idx})
-   count+=1
    with RUNTIME.lock:RUNTIME.next_agent_index=(idx+1)%2
    if text.rstrip().endswith('[END]'):break
    time.sleep(.16)
