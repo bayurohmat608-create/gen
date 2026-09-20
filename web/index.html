@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07151b" />
+  <title>Blind Agent Room</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand-row">
+      <div class="brand-mark">B</div>
+      <div><strong>Blind Agent Room</strong><small>local-first · two-agent lab</small></div>
+      <button class="icon-btn desktop-hidden" id="closeSidebar" aria-label="Tutup sidebar">✕</button>
+    </div>
+    <button class="primary wide" id="newRoomBtn">＋ Room baru</button>
+    <div class="section-title">ROOM</div>
+    <nav class="room-nav">
+      <button class="nav-item active"><span>◉</span><div><b>Live room</b><small id="navTopic">Belum ada topik</small></div></button>
+      <button class="nav-item" id="exportBtn"><span>⇩</span><div><b>Export transcript</b><small>JSON</small></div></button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="security-note"><span>●</span><div><b>Localhost only</b><small>API key tidak disimpan ke repo atau transcript.</small></div></div>
+      <button class="secondary wide" id="settingsBtnSide">⚙ Settings</button>
+    </div>
+  </aside>
+
+  <main class="chat-column">
+    <header class="topbar">
+      <button class="icon-btn" id="menuBtn" aria-label="Menu">☰</button>
+      <div class="room-avatar">B</div>
+      <div class="room-title"><strong>Blind Agent Room</strong><small id="statusLine"><span class="dot"></span> idle · siap dimulai</small></div>
+      <div class="top-actions">
+        <button class="pill" id="modePill">FREE</button>
+        <button class="icon-btn danger-soft" id="stopBtn" aria-label="Stop">■</button>
+        <button class="icon-btn" id="settingsBtn" aria-label="Settings">⚙</button>
+      </div>
+    </header>
+
+    <section class="topic-strip" id="topicStrip">
+      <div><small>TOPIK</small><strong id="topicText">Belum ada topik</strong></div>
+      <div class="turn-chip" id="turnChip">0 / 8 turn</div>
+    </section>
+
+    <section class="messages" id="messages" aria-live="polite">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-orb">B</div>
+        <h1>Dua AI. Satu room.</h1>
+        <p>Kasih satu topik, pilih persona mereka, lalu biarkan percakapannya berkembang sendiri.</p>
+        <div class="starter-grid">
+          <button class="starter" data-topic="Halo">👋 <b>Mulai dari “Halo”</b><span>lihat mereka salah paham secara kreatif</span></button>
+          <button class="starter" data-topic="Debatkan static typing vs dynamic typing untuk developer mobile">⚖ <b>Debat teknis</b><span>adu argumen tanpa identitas model</span></button>
+          <button class="starter" data-topic="Rancang IDE Android ideal yang sepenuhnya berjalan di HP">⌨ <b>Brainstorm IDE</b><span>dua perspektif, satu masalah</span></button>
+          <button class="starter" data-topic="Ngobrol bebas tentang hal yang paling menarik dari AI agent">✦ <b>Free chat</b><span>biarkan topik berkembang natural</span></button>
+        </div>
+      </div>
+      <div class="typing-row hidden" id="typingRow"><div class="typing-bubble"><span id="typingName">Agent A</span> mengetik <i></i><i></i><i></i></div></div>
+    </section>
+
+    <footer class="composer-wrap">
+      <div class="composer-toolbar">
+        <button class="mini-pill active" data-mode="free">Free</button>
+        <button class="mini-pill" data-mode="debate">Debate</button>
+        <button class="mini-pill" data-mode="brainstorm">Brainstorm</button>
+        <button class="mini-pill" data-mode="review">Review</button>
+        <span class="spacer"></span>
+        <label class="turn-control">Turn <input id="turnsInput" type="number" min="1" max="50" value="8" /></label>
+      </div>
+      <div class="composer">
+        <textarea id="composerInput" rows="1" placeholder="Tulis topik untuk mulai, atau nimbrung saat room berjalan…"></textarea>
+        <button class="send-btn" id="sendBtn" aria-label="Kirim">➤</button>
+      </div>
+      <div class="composer-hint"><span id="hintText">Enter untuk mulai · Shift+Enter baris baru</span><button id="pauseBtn" class="text-btn hidden">Pause</button></div>
+    </footer>
+  </main>
+</div>
+
+<div class="backdrop hidden" id="backdrop"></div>
+<dialog class="settings" id="settingsDialog">
+  <form method="dialog" class="settings-card" id="settingsForm">
+    <div class="settings-head"><div><h2>Room settings</h2><p>Model, provider, persona, dan API key memory-only.</p></div><button class="icon-btn" value="cancel">✕</button></div>
+    <div class="agent-tabs"><button type="button" class="agent-tab active" data-agent="0">Agent A</button><button type="button" class="agent-tab" data-agent="1">Agent B</button></div>
+    <div class="agent-panel" data-panel="0"></div>
+    <div class="agent-panel hidden" data-panel="1"></div>
+    <div class="settings-actions"><span id="settingsStatus"></span><button type="button" class="secondary" id="testDemoBtn">Demo tanpa API</button><button type="button" class="primary" id="saveSettingsBtn">Simpan</button></div>
+  </form>
+</dialog>
+
+<script src="/app.js"></script>
+</body>
+</html>
