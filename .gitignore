@@ -1,0 +1,5 @@
+blindroom.json
+.env
+transcripts/
+__pycache__/
+*.pyc
