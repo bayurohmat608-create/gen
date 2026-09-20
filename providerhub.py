@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, os, urllib.error, urllib.parse, urllib.request
+import json, os, urllib.error, urllib.request
 from typing import Any
 
 class ProviderHubError(RuntimeError):
@@ -46,6 +46,7 @@ def discover_models(provider: str, key: str, base_url: str | None = None) -> lis
     if not key:
         raise ProviderHubError("API key kosong")
     base = _safe_base(provider, base_url)
+
     if provider in {"openai", "openai-compatible"}:
         data = _get_json(
             f"{_normalize_v1(base)}/models",
@@ -121,6 +122,12 @@ def discover_from_env(provider: str, env_name: str, base_url: str | None = None)
     if not key:
         raise ProviderHubError(f"Belum terhubung: {env_name} belum tersedia")
     return discover_models(provider, key, base_url)
+
+def disconnect_provider(env_name: str) -> None:
+    env_name = env_name.strip()
+    if not env_name or not env_name.replace("_", "A").isalnum():
+        raise ProviderHubError("Nama environment variable tidak valid")
+    os.environ.pop(env_name, None)
 
 def connection_summary(provider: str, env_name: str) -> dict[str, Any]:
     return {
