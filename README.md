@@ -1,17 +1,23 @@
 # Blind Agent Room
 
-A tiny terminal experiment where two LLMs talk directly to each other using **your own API keys**. Built as a throwaway lab for the future Droide multi-agent idea.
+A local-first experiment where **two LLMs talk directly to each other** using your own API keys. It now ships with both a terminal interface and a responsive chatroom-style web UI.
 
-## Features
+The project started as a small lab for the future Droide multi-agent idea: give two models different providers/personas, hide their identities, then watch the conversation evolve.
+
+## What it does
 
 - Two agents alternate automatically.
-- Mix OpenAI, Anthropic, Gemini, or an OpenAI-compatible endpoint.
+- Providers: OpenAI, Anthropic, Gemini, and OpenAI-compatible endpoints.
 - Personas: `default`, `calm`, `focus`, `mbul`.
-- Blind Agent A / Agent B labels while they talk, with optional reveal at the end.
-- API keys stay in environment variables and are never written to config or transcripts.
-- No model tool execution in this experiment. Both agents are explicitly told they have no terminal, filesystem, browser, or executor.
-- Retries transient network, 429, and common 5xx failures.
-- Saves a JSON transcript.
+- Responsive mobile/desktop chat UI.
+- Live room state over Server-Sent Events.
+- Typing indicator, pause, stop, turn counter, and human intervention.
+- Room modes: Free, Debate, Brainstorm, Review.
+- In-app provider/model/persona settings.
+- API keys entered in the web UI are **memory-only**.
+- JSON transcript export.
+- Demo mode for testing the UI without spending API credits.
+- CLI remains available.
 - Zero third-party Python dependencies.
 
 ## Install on Termux
@@ -19,68 +25,116 @@ A tiny terminal experiment where two LLMs talk directly to each other using **yo
 ```bash
 pkg update
 pkg install python git
+
 git clone https://github.com/bayurohmat608-create/gen.git blind-agent-room
 cd blind-agent-room
+
 chmod +x install.sh
 ./install.sh
 export PATH="$HOME/.local/bin:$PATH"
-blindroom --version
 ```
 
-If you do not want to install it globally, just run:
+You now get two commands:
 
 ```bash
-python blindroom.py --help
+blindroom --version
+blindroom-web
 ```
 
-## Configure
+Start the web app:
+
+```bash
+blindroom-web
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8765
+```
+
+The server binds to localhost by default so the room and in-memory API keys are not exposed to other devices on your network.
+
+## First run
+
+You can configure providers from the Settings panel in the web UI, or use the CLI:
 
 ```bash
 blindroom init
 ```
 
-Setup asks for each provider, exact model ID, persona, and the **environment-variable name** that holds its API key. The key itself is never requested by the program.
-
-Then export only the keys you need, for example:
+For shell-based keys:
 
 ```bash
-export OPENAI_API_KEY='YOUR_OPENAI_KEY'
-export GEMINI_API_KEY='YOUR_GEMINI_KEY'
-export ANTHROPIC_API_KEY='YOUR_ANTHROPIC_KEY'
+export OPENAI_API_KEY='YOUR_KEY'
+export GEMINI_API_KEY='YOUR_KEY'
+export ANTHROPIC_API_KEY='YOUR_KEY'
 ```
 
-Do not paste real API keys into GitHub or commit them into files.
+Do not commit real API keys. `blindroom.json`, `.env`, and transcripts are ignored by Git.
 
-Check setup:
+The web Settings panel also lets you paste a key into the local server process. That value lives in memory only and disappears when the server stops.
+
+## Demo without an API key
+
+Open Settings and choose **Demo tanpa API**. This runs synthetic Focus/Mbul responses so you can test the whole chatroom flow without making provider requests.
+
+## Chatroom controls
+
+- **Free**: natural conversation.
+- **Debate**: challenge claims and surface trade-offs.
+- **Brainstorm**: generate and combine ideas.
+- **Review**: inspect risks, gaps, and improvements.
+- **Pause / Resume**: temporarily stop agent turns.
+- **Stop**: end the active room.
+- **Human message**: type while a room is running to enter the transcript.
+- **Export transcript**: save the current room as JSON.
+
+## CLI
+
+The original terminal experiment still works:
 
 ```bash
 blindroom doctor
+
+blindroom run \
+  --topic "Debatkan static typing vs dynamic typing" \
+  --turns 8
 ```
-
-## Run the experiment
-
-```bash
-blindroom run --topic "Apakah AI agent seharusnya boleh mengkritik arsitektur IDE milik user?" --turns 6
-```
-
-The models alternate until the turn limit, `[END]`, an error, or `Ctrl+C`.
-
-Keep identities hidden even after the run:
-
-```bash
-blindroom run --topic "Debatkan static typing vs dynamic typing" --turns 8 --no-reveal
-```
-
-## Providers
-
-`openai` uses the OpenAI Responses API. `anthropic` uses the Messages API. `gemini` uses `generateContent`. `openai-compatible` uses `/v1/chat/completions` and asks for a custom base URL.
-
-Model IDs are intentionally not hardcoded because catalogues change. Enter the exact model ID your account/provider exposes.
 
 ## Persona isolation
 
-A persona only changes conversational style. It does not grant tools, permissions, or different security rules. That separation is intentional so `mbul` can yap without magically acquiring a terminal.
+Persona changes presentation and interaction style only. It does **not** grant tools, permissions, filesystem access, terminal access, or different security rules.
 
-## Cost note
+That separation is intentional, so `mbul` can yap without magically acquiring a terminal.
 
-Every turn is a real API request. Six turns means roughly six requests total, alternating between the two agents. Each later turn includes the conversation so far, so token use grows as the room gets longer. Start small.
+## Security model
+
+- Web server defaults to `127.0.0.1`.
+- API key values are never returned by the state API.
+- Keys entered through the UI are stored only in the running Python process.
+- API key values are not written into config or transcript exports.
+- A Content Security Policy and basic browser security headers are enabled.
+- OpenAI-compatible custom endpoints must use HTTPS, except localhost endpoints.
+
+If you intentionally bind the server to a LAN-facing address, treat the machine and network as trusted because local session data can become reachable.
+
+## Provider notes
+
+The core provider adapters live in `blindroom.py`. Model IDs are intentionally data-driven rather than hardcoded because provider catalogs change.
+
+Each agent turn is a real API request unless Demo mode is active. Longer rooms repeatedly include conversation context, so API usage can grow quickly. Start with a small turn count.
+
+## Project structure
+
+```text
+blindroom.py      provider adapters + original CLI
+roomcore.py       room state, persona orchestration, room modes
+webhandler.py     localhost HTTP/SSE API
+webroom.py        web server launcher
+web/              responsive chatroom client
+```
+
+## License
+
+MIT. See `LICENSE`.
