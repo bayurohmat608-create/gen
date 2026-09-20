@@ -1,0 +1,25 @@
+{
+  "room": {
+    "name": "Blind Agent Room",
+    "turns": 6,
+    "reveal_at_end": true
+  },
+  "agents": [
+    {
+      "name": "Agent A",
+      "provider": "openai",
+      "model": "YOUR_OPENAI_MODEL_ID",
+      "persona": "focus",
+      "api_key_env": "OPENAI_API_KEY",
+      "max_output_tokens": 600
+    },
+    {
+      "name": "Agent B",
+      "provider": "gemini",
+      "model": "YOUR_GEMINI_MODEL_ID",
+      "persona": "mbul",
+      "api_key_env": "GEMINI_API_KEY",
+      "max_output_tokens": 600
+    }
+  ]
+}
