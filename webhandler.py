@@ -2,22 +2,31 @@ from __future__ import annotations
 import json,mimetypes,os,queue,urllib.parse
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
+from providerhub import connect_provider,connection_summary,discover_from_env
 from roomcore import RUNTIME,config_summary,export_data,save_config,start
-ROOT=Path(__file__).resolve().parent; WEB_ROOT=ROOT/'web'
+
+ROOT=Path(__file__).resolve().parent
+WEB_ROOT=ROOT/'web'
+
 def reply(h,status,payload):
- data=json.dumps(payload,ensure_ascii=False).encode();h.send_response(status);h.send_header('Content-Type','application/json; charset=utf-8');h.send_header('Content-Length',str(len(data)));h.send_header('Cache-Control','no-store');h.end_headers();h.wfile.write(data)
+ data=json.dumps(payload,ensure_ascii=False).encode()
+ h.send_response(status);h.send_header('Content-Type','application/json; charset=utf-8');h.send_header('Content-Length',str(len(data)));h.send_header('Cache-Control','no-store');h.end_headers();h.wfile.write(data)
+
 def body(h):
  n=int(h.headers.get('Content-Length','0') or '0')
  if n>1_000_000:raise ValueError('Request too large')
  x=json.loads((h.rfile.read(n) if n else b'{}').decode())
  if not isinstance(x,dict):raise ValueError('JSON body must be an object')
  return x
+
 class Handler(BaseHTTPRequestHandler):
- server_version='BlindRoom/0.2.0'
+ server_version='BlindRoom/0.3.0'
  def log_message(self,fmt,*args):
   if not getattr(self.server,'quiet',False):super().log_message(fmt,*args)
  def end_headers(self):
-  self.send_header('X-Content-Type-Options','nosniff');self.send_header('X-Frame-Options','DENY');self.send_header('Referrer-Policy','no-referrer');self.send_header('Content-Security-Policy',"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'");super().end_headers()
+  self.send_header('X-Content-Type-Options','nosniff');self.send_header('X-Frame-Options','DENY');self.send_header('Referrer-Policy','no-referrer')
+  self.send_header('Content-Security-Policy',"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'")
+  super().end_headers()
  def do_GET(self):
   path=urllib.parse.urlparse(self.path).path
   if path=='/api/state':return reply(self,200,RUNTIME.snapshot())
@@ -27,7 +36,7 @@ class Handler(BaseHTTPRequestHandler):
   self.static(path)
  def do_POST(self):
   try:
-   p=body(self); path=urllib.parse.urlparse(self.path).path
+   p=body(self);path=urllib.parse.urlparse(self.path).path
    if path=='/api/start':start(p);return reply(self,200,{'ok':True,'state':RUNTIME.snapshot()})
    if path=='/api/stop':
     with RUNTIME.lock:RUNTIME.stop_requested=True;RUNTIME.paused=False
@@ -43,6 +52,15 @@ class Handler(BaseHTTPRequestHandler):
     with RUNTIME.lock:
      if RUNTIME.running:raise ValueError('Stop room sebelum mengubah config')
     save_config(p);RUNTIME.publish('state',RUNTIME.snapshot());return reply(self,200,{'ok':True,'config':config_summary()})
+   if path=='/api/provider/connect':
+    provider=str(p.get('provider') or '').strip().lower();env=str(p.get('env') or '').strip();value=str(p.get('key') or '');base=str(p.get('base_url') or '').strip() or None
+    models=connect_provider(provider,env,value,base)
+    RUNTIME.publish('state',RUNTIME.snapshot())
+    return reply(self,200,{'ok':True,'connection':connection_summary(provider,env),'models':models,'stored':'memory-only'})
+   if path=='/api/provider/models':
+    provider=str(p.get('provider') or '').strip().lower();env=str(p.get('env') or '').strip();base=str(p.get('base_url') or '').strip() or None
+    models=discover_from_env(provider,env,base)
+    return reply(self,200,{'ok':True,'connection':connection_summary(provider,env),'models':models})
    if path=='/api/key':
     env=str(p.get('env') or '').strip();value=str(p.get('value') or '')
     if not env or not env.replace('_','A').isalnum():raise ValueError('Invalid env name')
