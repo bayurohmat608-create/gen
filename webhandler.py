@@ -2,7 +2,7 @@ from __future__ import annotations
 import json,mimetypes,os,queue,urllib.parse
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
-from providerhub import connect_provider,connection_summary,discover_from_env
+from providerhub import connect_provider,connection_summary,discover_from_env,disconnect_provider
 from roomcore import RUNTIME,config_summary,export_data,save_config,start
 
 ROOT=Path(__file__).resolve().parent
@@ -61,6 +61,10 @@ class Handler(BaseHTTPRequestHandler):
     provider=str(p.get('provider') or '').strip().lower();env=str(p.get('env') or '').strip();base=str(p.get('base_url') or '').strip() or None
     models=discover_from_env(provider,env,base)
     return reply(self,200,{'ok':True,'connection':connection_summary(provider,env),'models':models})
+   if path=='/api/provider/disconnect':
+    env=str(p.get('env') or '').strip();provider=str(p.get('provider') or '').strip().lower()
+    disconnect_provider(env);RUNTIME.publish('state',RUNTIME.snapshot())
+    return reply(self,200,{'ok':True,'connection':connection_summary(provider,env)})
    if path=='/api/key':
     env=str(p.get('env') or '').strip();value=str(p.get('value') or '')
     if not env or not env.replace('_','A').isalnum():raise ValueError('Invalid env name')
