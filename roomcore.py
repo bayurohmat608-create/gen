@@ -6,7 +6,7 @@ from typing import Any
 import blindroom
 
 ROOT=Path(__file__).resolve().parent
-CONFIG_PATH=ROOT/'blindroom.json'
+CONFIG_PATH=Path(os.environ.get('BLINDROOM_CONFIG', str(Path.cwd()/'blindroom.json'))).expanduser()
 VERSION='0.2.0'
 ROOM_MODES={
  'free':'Let the conversation evolve naturally while staying relevant to the topic.',
