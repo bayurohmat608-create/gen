@@ -13,6 +13,8 @@ The project started as a small lab for the future Droide multi-agent idea: give 
 - Live room state over Server-Sent Events.
 - Typing indicator, pause, stop, turn counter, and human intervention.
 - Room modes: Free, Debate, Brainstorm, Review.
+- In-app **Hubungkan Penyedia** flow for OpenAI, Anthropic, Gemini, and OpenAI-compatible endpoints.
+- Live model discovery after authentication, so available model IDs populate automatically.
 - In-app provider/model/persona settings.
 - API keys entered in the web UI are **memory-only**.
 - JSON transcript export.
@@ -73,7 +75,11 @@ export ANTHROPIC_API_KEY='YOUR_KEY'
 
 Do not commit real API keys. `blindroom.json`, `.env`, and transcripts are ignored by Git.
 
-The web Settings panel also lets you paste a key into the local server process. That value lives in memory only and disappears when the server stops.
+The web Settings panel also lets you connect a provider, validates the credential against that provider, and loads the models that credential can access. The value lives in memory only and disappears when the server stops.
+
+### OpenAI / ChatGPT account note
+
+Blind Agent Room connects to the **OpenAI API Platform**, not to a consumer ChatGPT session. OpenAI's public API authentication uses API keys, and ChatGPT subscription billing is separate from API Platform billing. After connecting an OpenAI Platform key, BlindRoom calls the Models API and fills the model picker with the model IDs available to that API credential.
 
 ## Demo without an API key
 
