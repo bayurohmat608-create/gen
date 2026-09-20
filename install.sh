@@ -17,7 +17,6 @@ exec "$PYTHON" "$ROOT/blindroom.py" "\$@"
 EOF
 cat > "$BIN/blindroom-web" <<EOF
 #!/usr/bin/env sh
-cd "$ROOT"
 exec "$PYTHON" "$ROOT/webroom.py" "\$@"
 EOF
 chmod +x "$BIN/blindroom" "$BIN/blindroom-web"
