@@ -1,36 +1,21 @@
-name: Droide CP91 Alpine Rootfs Trust Probe
+name: Cleanup Droide CP91 Bootstrap Probe
 on:
   pull_request:
+    types: [closed]
     branches: [main]
 permissions:
-  contents: read
+  contents: write
+  actions: write
 jobs:
-  probe:
-    if: github.head_ref == 'droide-cp91-bootstrap-probe'
+  cleanup:
+    if: github.event.pull_request.head.ref == 'droide-cp91-bootstrap-probe'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - name: Inspect exact Alpine minirootfs TLS and apk bootstrap files
+      - name: Remove temporary CP91 probe branch and artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          curl -fL --retry 3 -o alpine.tar.gz https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/alpine-minirootfs-3.24.2-aarch64.tar.gz
-          echo "ROOTFS_SHA256=$(sha256sum alpine.tar.gz | awk '{print $1}')"
-          mkdir rootfs
-          tar -xzf alpine.tar.gz -C rootfs
-          test -x rootfs/sbin/apk
-          echo "APK_PRESENT=yes"
-          if [ -e rootfs/etc/ssl/cert.pem ]; then
-            echo "CERT_PEM_PRESENT=yes"
-            ls -l rootfs/etc/ssl/cert.pem
-          else
-            echo "CERT_PEM_PRESENT=no"
-          fi
-          if [ -e rootfs/etc/ssl/certs/ca-certificates.crt ]; then
-            echo "CA_BUNDLE_PRESENT=yes"
-            stat -c '%s' rootfs/etc/ssl/certs/ca-certificates.crt
-          else
-            echo "CA_BUNDLE_PRESENT=no"
-          fi
-          echo "REPOSITORIES_BEGIN"
-          cat rootfs/etc/apk/repositories 2>/dev/null || true
-          echo "REPOSITORIES_END"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts" --paginate --jq '.artifacts[] | select(.name | startswith("droide-cp91")) | .id' | while read -r id; do
+            [ -n "$id" ] && gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id" || true
+          done
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/droide-cp91-bootstrap-probe" || true
