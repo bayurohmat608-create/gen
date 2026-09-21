@@ -73,3 +73,11 @@ jobs:
           gh release create droide-cp86-transport droide-cp86-gradle-dependencies.zip \
             --title "Temporary Droide CP86 dependency transport" \
             --notes "Temporary transport of public build dependencies only. No Droide source or credentials."
+
+      - name: Artifact lane probe
+        run: echo "cp86-artifact-probe" > cp86-artifact-probe.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cp86-artifact-probe
+          path: cp86-artifact-probe.txt
+          retention-days: 1
