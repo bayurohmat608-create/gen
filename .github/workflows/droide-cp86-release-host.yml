@@ -74,10 +74,9 @@ jobs:
             --title "Temporary Droide CP86 dependency transport" \
             --notes "Temporary transport of public build dependencies only. No Droide source or credentials."
 
-      - name: Artifact lane probe
-        run: echo "cp86-artifact-probe" > cp86-artifact-probe.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: cp86-artifact-probe
-          path: cp86-artifact-probe.txt
+          name: droide-cp86-dependencies
+          path: droide-cp86-gradle-dependencies.zip
+          compression-level: 0
           retention-days: 1
