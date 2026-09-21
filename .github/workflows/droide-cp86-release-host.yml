@@ -1,0 +1,75 @@
+name: Droide CP86 Release Transport
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  resolve:
+    if: github.head_ref == 'droide-cp86-transport'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK API 36
+        run: |
+          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null || true
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Resolve exact Droide remote graph
+        working-directory: droide-resolver
+        run: gradle --no-daemon :app:resolveDroideGraph
+      - name: Build verified transport bundle
+        shell: python
+        run: |
+          import hashlib, json, pathlib, zipfile
+          root = pathlib.Path.home()/".gradle/caches/modules-2"
+          assert (root/"files-2.1").is_dir()
+          assert (root/"metadata-2.107").is_dir()
+          rows=[]
+          for p in sorted(root.rglob("*")):
+              if not p.is_file() or p.name=="gc.properties" or p.suffix==".lock":
+                  continue
+              rel=p.relative_to(root).as_posix()
+              data=p.read_bytes()
+              rows.append({"path":rel,"size":len(data),"sha256":hashlib.sha256(data).hexdigest()})
+          manifest={
+              "schema":1,
+              "kind":"droide-gradle-dependency-cache",
+              "gradleVersion":"8.13",
+              "metadataFormat":"metadata-2.107",
+              "buildConfigSha256":"3f143e72b8343aa974defa8cb25e9ca6a472d1742a732ff4adfacdda62c585d6",
+              "fileCount":len(rows),
+              "files":rows,
+              "excludes":["*.lock","gc.properties"],
+              "consumerEnv":"GRADLE_RO_DEP_CACHE",
+              "transport":"github-actions-official-repositories-no-droide-source"
+          }
+          out=pathlib.Path("droide-cp86-gradle-dependencies.zip")
+          fixed=(2020,1,1,0,0,0)
+          with zipfile.ZipFile(out,"w",allowZip64=True) as z:
+              def put(name,data):
+                  zi=zipfile.ZipInfo(name,fixed); zi.compress_type=zipfile.ZIP_DEFLATED; zi.external_attr=0o100644<<16
+                  z.writestr(zi,data,compress_type=zipfile.ZIP_DEFLATED,compresslevel=6)
+              put("manifest.json",(json.dumps(manifest,indent=2,sort_keys=True)+"\n").encode())
+              for e in rows:
+                  put("modules-2/"+e["path"],(root/e["path"]).read_bytes())
+          print("files",len(rows))
+          print("sha256",hashlib.sha256(out.read_bytes()).hexdigest())
+      - name: Publish temporary release transport
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete droide-cp86-transport --cleanup-tag --yes || true
+          gh release create droide-cp86-transport droide-cp86-gradle-dependencies.zip \
+            --title "Temporary Droide CP86 dependency transport" \
+            --notes "Temporary transport of public build dependencies only. No Droide source or credentials."
