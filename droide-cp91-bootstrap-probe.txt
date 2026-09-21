@@ -1,1 +1,1 @@
-Temporary CP91 upstream hash probe. No Droide source.\n
+Temporary CP91 upstream hash probe. No Droide source.\npackage-probe-1\n
