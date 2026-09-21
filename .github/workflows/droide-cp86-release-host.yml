@@ -25,9 +25,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
-      - name: Resolve exact Droide remote graph
+      - name: Resolve exact Droide graph and AGP task tooling
         working-directory: droide-resolver
-        run: gradle --no-daemon :app:resolveDroideGraph
+        run: |
+          gradle --no-daemon :app:resolveDroideGraph
+          gradle --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
       - name: Build verified transport bundle
         shell: python
         run: |
