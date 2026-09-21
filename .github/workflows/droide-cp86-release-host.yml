@@ -1,4 +1,4 @@
-name: Droide CP86 Dependency Delta Transport
+name: Droide CP86 Navigation Tooling Closure
 on:
   pull_request:
     branches: [main]
@@ -6,64 +6,84 @@ permissions:
   actions: read
   contents: read
 jobs:
-  delta:
+  closure:
     if: github.head_ref == 'droide-cp86-transport'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      GRADLE_USER_HOME: /tmp/droide-gradle-closure
     steps:
-      - name: Download verified v1 and v2 cache artifacts
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK API 36
+        run: |
+          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null || true
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Force real AGP navigation/tooling resolution
+        working-directory: droide-resolver
+        run: |
+          gradle --no-daemon :app:resolveDroideGraph
+          gradle --no-daemon :app:compileDebugNavigationResources :app:compileDebugKotlin :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+      - name: Download verified v1 baseline artifact
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/cp86-v1 /tmp/cp86-v2
+          mkdir -p /tmp/cp86-v1
           gh run download 35596310576 --repo bayurohmat608-create/gen -n droide-cp86-dependencies -D /tmp/cp86-v1
-          gh run download 35597311644 --repo bayurohmat608-create/gen -n droide-cp86-dependencies -D /tmp/cp86-v2
           test -s /tmp/cp86-v1/droide-cp86-gradle-dependencies.zip
-          test -s /tmp/cp86-v2/droide-cp86-gradle-dependencies.zip
-      - name: Build deterministic v2-minus-v1 delta
+      - name: Build deterministic navigation-closure delta
         shell: python
         run: |
           import hashlib, json, pathlib, zipfile
           v1=pathlib.Path('/tmp/cp86-v1/droide-cp86-gradle-dependencies.zip')
-          v2=pathlib.Path('/tmp/cp86-v2/droide-cp86-gradle-dependencies.zip')
-          out=pathlib.Path('droide-cp86-dependency-delta-v2.zip')
-          with zipfile.ZipFile(v1) as z1, zipfile.ZipFile(v2) as z2:
+          root=pathlib.Path('/tmp/droide-gradle-closure/caches/modules-2')
+          assert (root/'files-2.1').is_dir()
+          assert (root/'metadata-2.107').is_dir()
+          out=pathlib.Path('droide-cp86-dependency-delta-navclosure.zip')
+          with zipfile.ZipFile(v1) as z1:
               m1=json.loads(z1.read('manifest.json'))
-              m2=json.loads(z2.read('manifest.json'))
-              assert m1['buildConfigSha256']==m2['buildConfigSha256']=='3f143e72b8343aa974defa8cb25e9ca6a472d1742a732ff4adfacdda62c585d6'
               old={e['path']:e['sha256'] for e in m1['files']}
-              changed=[e for e in m2['files'] if old.get(e['path']) != e['sha256']]
-              manifest={
-                  'schema':1,
-                  'kind':'droide-gradle-dependency-cache-delta',
-                  'baseRunId':35596310576,
-                  'targetRunId':35597311644,
-                  'buildConfigSha256':m2['buildConfigSha256'],
-                  'baseFileCount':m1['fileCount'],
-                  'targetFileCount':m2['fileCount'],
-                  'deltaFileCount':len(changed),
-                  'baseBundleSha256':hashlib.sha256(v1.read_bytes()).hexdigest(),
-                  'targetBundleSha256':hashlib.sha256(v2.read_bytes()).hexdigest(),
-                  'files':changed,
-              }
-              fixed=(2020,1,1,0,0,0)
-              with zipfile.ZipFile(out,'w',allowZip64=True) as zo:
-                  def put(name,data):
-                      zi=zipfile.ZipInfo(name,fixed)
-                      zi.compress_type=zipfile.ZIP_DEFLATED
-                      zi.external_attr=0o100644<<16
-                      zo.writestr(zi,data,compress_type=zipfile.ZIP_DEFLATED,compresslevel=6)
-                  put('delta-manifest.json',(json.dumps(manifest,indent=2,sort_keys=True)+'\n').encode())
-                  for e in changed:
-                      put('modules-2/'+e['path'], z2.read('modules-2/'+e['path']))
-          print('base_files',manifest['baseFileCount'])
-          print('target_files',manifest['targetFileCount'])
-          print('delta_files',manifest['deltaFileCount'])
+          rows=[]
+          for p in sorted(root.rglob('*')):
+              if not p.is_file() or p.name=='gc.properties' or p.suffix=='.lock':
+                  continue
+              rel=p.relative_to(root).as_posix()
+              data=p.read_bytes()
+              sha=hashlib.sha256(data).hexdigest()
+              if old.get(rel)!=sha:
+                  rows.append({'path':rel,'size':len(data),'sha256':sha})
+          manifest={
+              'schema':1,
+              'kind':'droide-gradle-dependency-cache-delta',
+              'buildConfigSha256':'3f143e72b8343aa974defa8cb25e9ca6a472d1742a732ff4adfacdda62c585d6',
+              'baseRunId':35596310576,
+              'deltaFileCount':len(rows),
+              'files':rows,
+              'reason':'real-compileDebugNavigationResources-tooling-closure'
+          }
+          fixed=(2020,1,1,0,0,0)
+          with zipfile.ZipFile(out,'w',allowZip64=True) as z:
+              def put(name,data):
+                  zi=zipfile.ZipInfo(name,fixed); zi.compress_type=zipfile.ZIP_DEFLATED; zi.external_attr=0o100644<<16
+                  z.writestr(zi,data,compress_type=zipfile.ZIP_DEFLATED,compresslevel=6)
+              put('delta-manifest.json',(json.dumps(manifest,indent=2,sort_keys=True)+'\n').encode())
+              for e in rows:
+                  put('modules-2/'+e['path'],(root/e['path']).read_bytes())
+          print('delta_files',len(rows))
           print('delta_bytes',out.stat().st_size)
           print('delta_sha256',hashlib.sha256(out.read_bytes()).hexdigest())
+          print('aapt2_entries',[e['path'] for e in rows if '/aapt2/' in '/'+e['path'] or 'aapt2' in e['path']])
       - uses: actions/upload-artifact@v4
         with:
-          name: droide-cp86-dependency-delta-v2
-          path: droide-cp86-dependency-delta-v2.zip
+          name: droide-cp86-dependency-delta-navclosure
+          path: droide-cp86-dependency-delta-navclosure.zip
           compression-level: 0
           retention-days: 1
