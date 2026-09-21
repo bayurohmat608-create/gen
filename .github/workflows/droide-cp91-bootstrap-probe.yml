@@ -1,4 +1,4 @@
-name: Droide CP91 Alpine Package Probe
+name: Droide CP91 Alpine Alias Probe
 on:
   pull_request:
     branches: [main]
@@ -10,37 +10,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Inspect Alpine 3.24 ARM64 package index
+      - name: Inspect Alpine 3.24 ARM64 package aliases
         run: |
           set -euo pipefail
-          mkdir -p idx
           curl -fL --retry 3 -o main.tar.gz https://dl-cdn.alpinelinux.org/alpine/v3.24/main/aarch64/APKINDEX.tar.gz
           curl -fL --retry 3 -o community.tar.gz https://dl-cdn.alpinelinux.org/alpine/v3.24/community/aarch64/APKINDEX.tar.gz
-          tar -xOzf main.tar.gz APKINDEX > idx/main.txt
-          tar -xOzf community.tar.gz APKINDEX > idx/community.txt
-          cat idx/main.txt idx/community.txt > idx/all.txt
+          { tar -xOzf main.tar.gz APKINDEX; printf '\n'; tar -xOzf community.tar.gz APKINDEX; } > all.txt
           python3 - <<'PY'
           import re
-          text=open("idx/all.txt",encoding="utf-8").read()
+          text=open("all.txt",encoding="utf-8").read()
           blocks=text.strip().split("\n\n")
-          pkgs={}
+          rows=[]
           for b in blocks:
               d={}
               for line in b.splitlines():
                   if len(line)>2 and line[1]==":":
                       d[line[0]]=line[2:]
-              if "P" in d:
-                  pkgs[d["P"]]=d.get("V","")
-          candidates=[
-            "python3","py3-pip","nodejs","npm","go","rust","cargo","rustfmt",
-            "clang","clang-extra-tools","llvm","lld","gcc","g++","musl-dev",
-            "cmake","ninja","make","meson","git","github-cli","curl","wget","jq",
-            "ripgrep","fd","fzf","tree","rsync","openssh-client","tar","zip","unzip",
-            "sqlite","sqlite-libs","php84","composer","ruby","ruby-bundler","lua5.4",
-            "R","perl","openjdk17-jdk","maven","gradle","nim","erlang","elixir",
-            "clojure","scala","zig","gopls","rust-analyzer","shellcheck","shfmt",
-            "yamllint","py3-pytest","py3-black","py3-ruff","py3-python-lsp-server"
-          ]
-          for p in candidates:
-              print(f"{p}={pkgs.get(p,'MISSING')}")
+              if "P" in d: rows.append((d["P"],d.get("V",""),d.get("p","")))
+          pats=["clang","lld","ninja","openssh","erlang","scala","black","lsp","typescript","dart","dotnet","powershell","swift","haskell","ghc","solc","kotlin","pnpm","yarn","bun","poetry","uv","prettier","eslint"]
+          for pat in pats:
+              print("###",pat)
+              for name,ver,provides in rows:
+                  if pat.lower() in name.lower() or pat.lower() in provides.lower():
+                      print(f"{name}={ver} provides={provides[:180]}")
           PY
