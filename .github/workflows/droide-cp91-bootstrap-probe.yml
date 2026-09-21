@@ -1,4 +1,4 @@
-name: Droide CP91 Bootstrap Hash Probe
+name: Droide CP91 Alpine Package Probe
 on:
   pull_request:
     branches: [main]
@@ -10,12 +10,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Resolve exact upstream bootstrap bytes
+      - name: Inspect Alpine 3.24 ARM64 package index
         run: |
           set -euo pipefail
-          curl -fL --retry 3 -o proot https://github.com/proot-me/proot/releases/download/v5.3.0/proot-v5.3.0-aarch64-static
-          curl -fL --retry 3 -o alpine.tar.gz https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/alpine-minirootfs-3.24.2-aarch64.tar.gz
-          printf 'PROOT_SIZE=%s\n' "$(stat -c %s proot)"
-          printf 'PROOT_SHA256=%s\n' "$(sha256sum proot | awk '{print $1}')"
-          printf 'ALPINE_SIZE=%s\n' "$(stat -c %s alpine.tar.gz)"
-          printf 'ALPINE_SHA256=%s\n' "$(sha256sum alpine.tar.gz | awk '{print $1}')"
+          mkdir -p idx
+          curl -fL --retry 3 -o main.tar.gz https://dl-cdn.alpinelinux.org/alpine/v3.24/main/aarch64/APKINDEX.tar.gz
+          curl -fL --retry 3 -o community.tar.gz https://dl-cdn.alpinelinux.org/alpine/v3.24/community/aarch64/APKINDEX.tar.gz
+          tar -xOzf main.tar.gz APKINDEX > idx/main.txt
+          tar -xOzf community.tar.gz APKINDEX > idx/community.txt
+          cat idx/main.txt idx/community.txt > idx/all.txt
+          python3 - <<'PY'
+          import re
+          text=open("idx/all.txt",encoding="utf-8").read()
+          blocks=text.strip().split("\n\n")
+          pkgs={}
+          for b in blocks:
+              d={}
+              for line in b.splitlines():
+                  if len(line)>2 and line[1]==":":
+                      d[line[0]]=line[2:]
+              if "P" in d:
+                  pkgs[d["P"]]=d.get("V","")
+          candidates=[
+            "python3","py3-pip","nodejs","npm","go","rust","cargo","rustfmt",
+            "clang","clang-extra-tools","llvm","lld","gcc","g++","musl-dev",
+            "cmake","ninja","make","meson","git","github-cli","curl","wget","jq",
+            "ripgrep","fd","fzf","tree","rsync","openssh-client","tar","zip","unzip",
+            "sqlite","sqlite-libs","php84","composer","ruby","ruby-bundler","lua5.4",
+            "R","perl","openjdk17-jdk","maven","gradle","nim","erlang","elixir",
+            "clojure","scala","zig","gopls","rust-analyzer","shellcheck","shfmt",
+            "yamllint","py3-pytest","py3-black","py3-ruff","py3-python-lsp-server"
+          ]
+          for p in candidates:
+              print(f"{p}={pkgs.get(p,'MISSING')}")
+          PY
