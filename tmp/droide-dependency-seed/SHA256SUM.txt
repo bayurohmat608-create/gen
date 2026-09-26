@@ -1,0 +1,1 @@
+64bc573bef8699c329f2cf1f68e4444a1511e39e3c7d361af0675ef870ae31e3  /home/runner/work/_temp/droide-gradle-modules.tar.zst
