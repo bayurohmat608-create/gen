@@ -1,0 +1,33 @@
+name: UI UX Pro Max Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ui-ux-pro-max-bridge.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp-ui-ux-pro-max-v2150
+          fetch-depth: 0
+
+      - name: Download and commit pinned upstream snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="v2.15.0"
+          mkdir -p transport/ui-ux-pro-max
+          curl --fail --location --retry 3             "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill/archive/refs/tags/${VERSION}.zip"             -o "transport/ui-ux-pro-max/ui-ux-pro-max-skill-${VERSION}.zip"
+          sha256sum "transport/ui-ux-pro-max/ui-ux-pro-max-skill-${VERSION}.zip"             > "transport/ui-ux-pro-max/ui-ux-pro-max-skill-${VERSION}.sha256"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add transport/ui-ux-pro-max/
+          git commit -m "Temporary UI/UX Pro Max v2.15.0 transport snapshot"
+          git push origin HEAD:tmp-ui-ux-pro-max-v2150
